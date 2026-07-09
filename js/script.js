@@ -1,5 +1,63 @@
 const todos = [];
 const RENDER_EVENT = 'render-todo';
+const SAVED_EVENT = 'saved-todo';
+const STORAGE_KEY = 'TODO_APPS';
+
+function isStorageExist() /* boolean */ {
+  if (typeof (Storage) === 'undefined') {
+    alert('Browser kamu tidak mendukung local storage');
+    return false;
+  }
+  return true;
+}
+
+function saveData() {
+  if (isStorageExist()) {
+    const parsed = JSON.stringify(todos);
+    localStorage.setItem(STORAGE_KEY, parsed);
+    document.dispatchEvent(new Event(SAVED_EVENT));
+  }
+}
+
+function showToast(message) {
+  let toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.classList.add('toast-container');
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement('div');
+  toast.classList.add('toast');
+  
+  const text = document.createElement('span');
+  text.innerText = message;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.classList.add('toast-close');
+  closeBtn.innerHTML = '&times;';
+  closeBtn.addEventListener('click', () => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  });
+  
+  toast.append(text, closeBtn);
+  toastContainer.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+document.addEventListener(SAVED_EVENT, function () {
+  console.log(localStorage.getItem(STORAGE_KEY));
+  showToast('Data berhasil disimpan!');
+});
 
 document.addEventListener(RENDER_EVENT, function () {
     const uncompletedTODOList = document.getElementById('todos');
@@ -18,12 +76,28 @@ document.addEventListener(RENDER_EVENT, function () {
     }
 });
 
+function loadDataFromStorage() {
+  const serializedData = localStorage.getItem(STORAGE_KEY);
+  let data = JSON.parse(serializedData);
+ 
+  if (data !== null) {
+    for (const todo of data) {
+      todos.push(todo);
+    }
+  }
+ 
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-        const submitForm = document.getElementById('form');
-        submitForm.addEventListener('submit', function (event) {
+    const submitForm = document.getElementById('form');
+    submitForm.addEventListener('submit', function (event) {
         event.preventDefault();
         addTodo();
     });
+    if (isStorageExist()) {
+        loadDataFromStorage();
+    }
 });
 
 function addTodo() {
@@ -35,13 +109,14 @@ function addTodo() {
     todos.push(todoObject);
     
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 }
 
 function generateId() {
     return +new Date();
-    }
+}
     
-    function generateTodoObject(id, task, timestamp, isCompleted) {
+function generateTodoObject(id, task, timestamp, isCompleted) {
     return {
         id,
         task,
@@ -103,6 +178,7 @@ function addTaskToCompleted (todoId) {
     
     todoTarget.isCompleted = true;
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 }
 
 function findTodo(todoId) {
@@ -121,6 +197,7 @@ function removeTaskFromCompleted(todoId) {
     
     todos.splice(todoTarget, 1);
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 }
  
 function undoTaskFromCompleted(todoId) {
@@ -130,6 +207,7 @@ function undoTaskFromCompleted(todoId) {
     
     todoTarget.isCompleted = false;
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 }
 
 function findTodoIndex(todoId) {
